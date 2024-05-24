@@ -1,0 +1,597 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+df_sales <- read.csv("~/SuperstoreSalesTraining.csv")
+head(df_sales)
+```
+```{r}
+# Descriptive Analysis of  the dataframe
+summary(df_sales)
+
+```
+
+
+```{r}
+#Counting the null values in the each column
+colSums(is.na(df_sales))
+```
+
+
+```{r}
+
+## Null or Empty string Check
+# Looping through columns in our dataframe do get the sum of their null values or empty string 
+
+results <- list()
+for(column_name in names(df_sales)) {
+  na_count <- sum(is.na(df_sales[[column_name]]))
+  empty_string_count <- NA
+  if(is.character(df_sales[[column_name]])) {
+    empty_string_count <- sum(df_sales[[column_name]] == "")
+  }
+  if(na_count > 0 || !is.na(empty_string_count) && empty_string_count > 0) {
+    results[[column_name]] <- list(NA_count = na_count, Empty_string_count = empty_string_count)
+  }
+}
+
+print(results)
+
+
+```
+```{r}
+# Looping  through each column  to see the distrbiution of the column
+for(column_name in names(df_sales)) {
+  if(is.numeric(df_sales[[column_name]])) {
+    boxplot(df_sales[[column_name]], main = paste("Box Plot of", column_name), ylab = column_name)
+    # Adding a pause so you can see each plot
+    cat("Press [enter] to continue:\n")
+    readline()
+  }
+}
+```
+
+
+
+```{r}
+## Creating a new Dataframe -- df_final by removing Postal Code and Sub Region since these columns had alot of null values and also the information from these columns arenot going to add  value to our analysis.
+
+df_final <- subset(df_sales, select = -c(Postal.Code, SubRegion))
+head(df_final)
+tail(df_final)
+```
+
+
+```{r}
+
+# Standardizing discount and ProductBaseMargin Column by removing the % symbol and converting them. to numeric data type for further analysis.
+
+df_final$Discount <- gsub("%", "", df_final$Discount)
+df_final$Discount <- as.numeric(df_final$Discount)
+df_final$Discount <- df_final$Discount/100
+
+df_final$Product.Base.Margin <- gsub("%", "", df_final$Product.Base.Margin)
+df_final$Product.Base.Margin <- as.numeric(df_final$Product.Base.Margin)
+df_final$Product.Base.Margin <- df_final$Product.Base.Margin / 100
+
+```
+
+
+
+```{r}
+#Checking the data after the cleaning.
+tail(df_final)
+
+```
+
+
+
+```{r}
+## ASSOCIATION ANALYSIS
+
+#1 Department and Sales:
+
+library(regclass)
+
+associate(Sales~Department, data=df_final, log="y", seed=9750)
+
+#Theoritical test
+1-pf(2444, df1 = 3-1, df2= 16798-3)
+
+##Based on the QQ plot analysis, it's evident that the distribution of the data deviates from normality. Because of that we choose median as our typical value. Additionally, observing the p-value, which is 0,is lower than the significant value. Thus, there is statistically significant relationship between the Department and sales. The confidence interval ranging from 0 to 0.05 further solidifies the test's conclusion.
+
+```
+
+
+
+
+```{r}
+#2.DISCOUNT AND SALES
+
+#Corelation between Discount and Sales
+cor(df_final$Discount, df_final$Sales)
+
+associate(log10(Sales)~log10(Discount), data=df_final, seed=9750)
+
+##Based on the scatterplot, it is clear that there is a lack of constant variance, and the presence of linearity is not observed,making it a monotonic plot.Since it is a monotonic plot we use the spearman corelation.Based on the spearman corelation  we can say that there is a negative and a weak relation relation between the Discount and the sales.The association is statistically significant since tht pvalue is less than 0.05. Additionally the test is conclusive as the confidence interval is between 0-0.007.
+
+```
+
+
+
+```{r}
+#3.PRODUCT BASE MARGIN AND SALES
+
+cor(df_final$Sales, df_final$Product.Base.Margin, method = "spearman")
+
+cor(df_final$Sales, df_final$Product.Base.Margin)
+
+associate(Sales~Product.Base.Margin, data = df_final)
+
+##Based on the scatterplot, it is clear that there is a lack of constant variance, and the presence of linearity is not observed,making it a monotonic plot.Since it is a monotonic plot we use the spearman corelation.Based on the spearman corelation  we can say that there is a Positive and a weak relation relation between the Discount and the sales.The association is statistically significant since tht pvalue is less than 0.05. Additionally the test is conclusive as the confidence interval is between 0-0.007.
+```
+
+
+
+```{r}
+#4 SALES AND REGION
+
+associate(Sales~factor(df_final$Region), log="y",data=df_final, seed = 9750)
+
+1-pf(1018, df1 = 4-1, df2= 16798-4)
+
+#Based on the QQ plot analysis, it's evident that the distribution of the data deviates from normality. Because of that we choose median as our typical value. Additionally, observing the p-value, which is 0,is lower than the significant value. Thus, there is statistically significant relationship between the Region and sales. The confidence interval ranging from 0 to 0.05 further solidifies the test's conclusion.
+
+```
+
+
+
+
+```{r}
+#5. SHIP MODE AND SALES
+associate(Sales~Ship.Mode, data=df_final, log="y", seed=9750)
+
+#Theoritical test
+1-pf(1462, df1 = 3-1, df2= 16798-3)
+
+#Based on the QQ plot analysis, it's evident that the distribution of the data deviates from normality. Because of that we choose median as our typical value. Additionally, observing the p-value, which is 0,is lower than the significant value. Thus, there is statistically significant relationship between the Department and sales. The confidence interval ranging from 0 to 0.05 further solidifies the test's conclusion.
+```
+
+
+
+```{r}
+# 6. SALES AND CUSTOMER SEGMENT
+
+associate(Sales~Customer.Segment, data=df_final, log="y", seed=9750)
+
+
+#We use the median as the typical value for the analysis.The pvlaue for the median is greater than the significance level .Thus we conclude that there is no association between the Sales and Customer Segment.However the test is inconclusive as the confidence interval includes 0.05. 
+
+##associate(Sales~Customer.Segment, data=df_final, log="y", permutations=10000, seed=9750)
+
+#Even after increasing the permutations to 10000 we still have pvalue of 0.05 included in the 95% confidence interval.
+
+#Theoritical test
+1-pf(1.431, df1 = 4-1, df2= 16798-4)
+
+```
+
+
+
+
+```{r}
+#Regression Model
+
+#1. Product.Base.Margin and Sales
+
+M <- lm(Sales~Product.Base.Margin, data=df_final)
+plot(Sales~Product.Base.Margin, data=df_final)
+summary(M)
+confint(M, levels=0.95)
+
+#LOG TRANSFORMATION
+#M <- lm(log10(Sales)~Product.Base.Margin, data=df_final)
+#plot(log10(Sales)~Product.Base.Margin, data=df_final)
+#abline(M)
+
+#Regressionmodel(Y) = 752.4+2072.6X
+
+#There is linear association between the Product.Base.Margin and the Sales.We can say that with one unit increase in the Product.Base.Margin there is 2072.6 increase in the sale. The linear association is statistically significant as  p-value is less than the significance level 0.05. Based on the confidence interval we can also conclude that the true value of the slope is between 1614.8252- 2530.4542 which doesnot include 0. 
+
+```
+
+
+
+
+```{r}
+#2. Discount and Sales
+
+M <- lm(Sales~Discount, data=df_final)
+plot(Sales~Discount, data=df_final)
+summary(M)
+confint(M, levels=0.95)
+
+#Regression Model:Y = 1905.69 -2041.60X
+#There is linear association between the Discount and the Sales.We can say that with one unit increase in the Discount there is 2041.60 decrease in the sale. The linear association is statistically significant as  p-value is less than the significancel level 0.05. Based on the confidence interval we can also conclude that the true value of the slope is between -2867.299 -1215.897 which doesnot include 0 making it a statically significant.
+
+```
+
+
+
+```{r}
+#ORDER QUANTITY AND SHIPPING COST
+
+M <- lm(Order.Quantity~Shipping.Cost, data=df_final)
+plot(Sales~Product.Base.Margin, data=df_final)
+summary(M)
+confint(M, levels=0.95)
+
+# Regression Model: Y = 26.40226-0.01419X
+
+#The coefficient estimate for "Shipping Cost" is -0.01419. This suggests that for every unit increase in shipping cost, the Order quantity decreases by approximately 0.01419 units.However since the pvalue is greater than the significance level of 0.05 we can conclude that there is no statistically significant relation between the Order quantity and Shipping cost.
+#The 95% ranges from -0.03801648 to 0.00964152. Since this interval includes zero, it further confirms that the coefficient is not statistically significantly.
+```
+
+```{r}
+
+# CHECKING THE YEAR ON YEAR SALES BASED ON THE DEPARTMENT
+
+install.packages("dplyr")
+library(dplyr)
+
+# Formatting the date
+df_final$Order.Date <- as.Date(df_final$Order.Date, format = "%d/%m/%Y")
+
+# Extracting year from the Date column and converting to integer
+df_final$Year <- as.integer(format(df_final$Order.Date, "%Y"))
+
+# Aggregating sales based on Department and Year
+aggregate_sales_department <- aggregate(Sales ~ Department + Year, data = df_final, sum)
+
+aggregate_sales_base <- aggregate_sales_department %>%
+  arrange(Year, -Sales) %>%
+  mutate(Department = factor(Department, levels = unique(Department)))
+
+# Checking the levels of Department
+levels(aggregate_sales_base$Department)
+
+print(aggregate_sales_base)
+
+
+```
+
+
+
+```{r}
+install.packages("ggplot2")
+library(ggplot2)
+
+install.packages("RColorBrewer")
+library(RColorBrewer)
+
+# To remove scientific notation
+options(scipen = 999)
+
+ggplot(data = aggregate_sales_base, aes(x = Year, y = Sales, fill = Department)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  scale_fill_manual(values = c("Furniture" = "#FF5733", "Office Supplies" = "#33C1FF", "Technology" = "#D4FF33")) +
+  labs(title = "Annual Sales by Department",
+       x = "Year",
+       y = "Total Sales",
+       fill = "Department") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_y_continuous(labels = scales::comma)
+
+
+#Based on the annual sales by Department , we can observe that the most of the sales for the supermarket is based off of technology department followed by furniture and office supplies.
+
+
+```
+
+
+
+```{r}
+##PERCENT CHANGE IN SALES BASED ON YEAR
+
+# Aggregating data by year and calculating  percentage change in sales
+
+sales_change <- df_final %>%
+  group_by(Year) %>%
+  summarise(Total_Sales = sum(Sales)) %>%
+  mutate(Percentage_Change = (Total_Sales / lag(Total_Sales) - 1) * 100)
+
+# Removing the first row as it will have NA for percentage change
+sales_change <- sales_change[-1,]
+
+# View the summary table
+print(sales_change)
+
+##we can observe a steady increase in sales over the three years, with the largest percentage increase occurring between 2012 and 2013. This suggests that there has been significant growth in sales over this period, particularly from 2012 to 2013.
+
+```
+
+
+```{r}
+
+# Create a line plot for percentage increase in sales
+ggplot(sales_change, aes(x = Year, y = Percentage_Change)) +
+  geom_line(color = "skyblue") +
+  geom_point(color = "skyblue", size = 3) +
+  labs(title = "Percentage Increase in Sales by Year",
+       x = "Year",
+       y = "Percentage Increase (%)") +
+  theme_minimal()
+
+```
+
+
+```{r}
+
+##PERCENTAGE CHANGE IN SALES BASED ON DEPARTMENT YEAR ON YEAR
+
+# Arranging data by year and category
+df_final <- df_final %>%
+  arrange(Year, Department)
+
+# Aggregating data by year, category, and calculate percentage change in sales
+sales_change_by_category <- df_final %>%
+  group_by(Department, Year) %>%
+  summarise(Total_Sales = sum(Sales)) %>%
+  mutate(Percentage_Change = (Total_Sales / lag(Total_Sales) - 1) * 100)
+
+# Removing the first row for each category as it will have NA for percentage change
+sales_change_by_category <- sales_change_by_category %>%
+  group_by(Department) %>%
+  filter(row_number() != 1)
+
+# View the summary table
+print(sales_change_by_category)
+
+```
+
+
+```{r}
+
+# Create a line plot for percentage change in sales by category and year
+ggplot(sales_change_by_category, aes(x = Year, y = Percentage_Change, color = Department, group = Department)) +
+  geom_line() +
+  geom_point(size = 2) +
+  labs(title = "Percentage Change in Sales by Department and Year",
+       x = "Year",
+       y = "Percentage Change (%)",
+       color = "Department") +
+  theme_minimal() +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "black")\
+
+## Previously we saw that there is increase in the sales year on Year . However when we dissect it based on the deprtment we can see that office supplies sales are decreasing
+
+```
+
+
+
+```{r}
+
+##ORDER PRIORITY AND DEPARTMENT
+
+# Order Priority and the association with Department
+priority_summary <- df_final %>%
+  group_by(Department, Order.Priority) %>%
+  summarise(OrderCount = n(), .groups = 'drop')
+priority_summary
+
+
+
+```
+
+
+```{r}
+
+ggplot(data = priority_summary, aes(x = Department, y = OrderCount, fill = Order.Priority)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  scale_fill_brewer(palette = "Set3") +
+  labs(title = "Order Priority Counts by Department",
+       x = "Department",
+       y = "Count",
+       fill = "Priority") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5))
+
+
+
+```
+
+
+
+```{r}
+
+##BASE MARGIN AND CATEGORY
+
+# Aggregating BaseMargin by Category
+aggregate_results <- df_final %>%
+  group_by(Category) %>%
+  summarise(
+    Median = median(Product.Base.Margin)
+  )
+
+aggregate_results 
+
+```
+
+
+```{r}
+# Creating a bar plot to visualize the median of base margin by category
+ggplot(aggregate_results, aes(x = Category, y =Median )) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  labs(title = "Sum of Base Margin by Category",
+       x = "Category",
+       y = "Sum of Base Margin") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  
+
+
+#Based on the barplot we seet that categories like Bookcases, Chairs & Chairmats, Computer Peripherals, and Storage & Organization have relatively higher median product base margins (around 0.60 or higher), suggesting potentially higher profitability for products in these categories.
+
+```
+
+
+```{r}
+# SHIPPING CONTAINER WITH THE CATEGORY
+
+# Aggregating data by counting occurrences of each combination of ShippingContainer and Category
+aggregate_results <- df_final %>%
+  group_by(Container, Category) %>%
+  summarise(Count = n())
+
+aggregate_results
+```
+
+
+
+```{r}
+## Association between the shipping container and the shipping cost:
+
+# Creating a contingency table
+contingency_table <- table(df_final$Shipping.Cost, df_final$Container)
+
+# Perform chi-square test
+chi_square_test <- chisq.test(contingency_table)
+chi_square_test
+
+##There is a association between the Shipping cost and the container
+
+```
+
+
+
+
+
+```{r}
+# Aggregating shipping costs by container
+shipping_costs_aggregated <- df_final %>%
+  group_by(Container) %>%
+  summarise(
+    AverageShippingCost = mean(Shipping.Cost)
+  )
+
+shipping_costs_aggregated 
+```
+
+
+```{r}
+# Creating a point plot
+
+ggplot(df_final, aes(x = Container, y = Shipping.Cost)) +
+  geom_point(alpha = 0.5, color = "skyblue") +
+  stat_summary(fun = mean, geom = "point", shape = 18, size = 3, color = "red") +
+  labs(title = "Average Shipping Cost by Container",
+       x = "Container",
+       y = "Shipping Cost") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+
+```{r}
+
+## SALES BASED ON MONTHLY FASHOIN
+
+# Extracting month from Order.Date and aggregate sales by month
+
+monthly_sales <- df_final %>%
+  mutate(Month = format(Order.Date, "%Y-%m")) %>%
+  group_by(Month) %>%
+  summarise(TotalSales = sum(Sales))
+monthly_sales 
+```
+
+
+
+```{r}
+# Creating a bar plot for monthly sales
+ggplot(monthly_sales, aes(x = Month, y = TotalSales)) +
+  geom_bar(stat = "identity", fill = "purple") +
+  labs(title = "Monthly Sales",
+       x = "Month",
+       y = "Total Sales") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  
+
+## Based on the visualization we can see that we the super market is making most sales on November month each year.
+```
+
+
+
+
+```{r}
+
+#Looking into novemeber data for
+
+# Filtering data for November each year
+november_data <- df_final %>%
+  filter(format(Order.Date, "%m") == "11")
+
+print(november_data)
+
+```
+
+
+
+```{r}
+
+# Aggregate data by department
+sales_by_department <- november_data %>%
+  group_by(Department) %>%
+  summarise(TotalSales = sum(Sales))
+print(sales_by_department)
+
+
+ggplot(sales_by_department, aes(x = Department, y = TotalSales, group = 1)) +
+  geom_line(color = "skyblue") +
+  labs(title = "Total Sales Trend by Department",
+       x = "Department",
+       y = "Total Sales") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  
+
+
+# The department with the highest total sales
+top_department <- sales_by_department %>% 
+  filter(TotalSales == max(TotalSales))
+
+top_department
+
+
+```
+
+
+
+```{r}
+
+# Extracting year and month from Order.Date and aggregate discounts by year and month
+discounts_by_year_month <- df_final %>%
+  mutate(YearMonth = format(Order.Date, "%Y-%m")) %>%
+  group_by(YearMonth) %>%
+  summarise(TotalDiscount = sum(Discount))
+
+print(discounts_by_year_month)
+
+
+# Create a bar plot for total discounts by month
+ggplot(discounts_by_year_month, aes(x = YearMonth, y = TotalDiscount)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  labs(title = "Total Discounts by Month",
+       x = "Year-Month",
+       y = "Total Discount") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+## There is no trend on the discounts on a partciular month it seems random.
+
+```
+
+```{r}
+
+
+```
+
